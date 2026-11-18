@@ -1,0 +1,6 @@
+dc_id,name,address,borough,lat_approx,lon_approx,bbl,it_capacity_mw_low,it_capacity_mw_mid,it_capacity_mw_high,in_scope,capacity_source,notes
+dc_111_8th_ave,111 Eighth Avenue,111 8th Ave,Manhattan,40.7411,-74.0034,,6.7,18,25,anchor,"Baxtel (6.7 MW utility), Digital Realty JFK10 listings (18 MW), Inflect (24-25 MW building)","Google-owned; multi-tenant carrier hotel (Digital Realty, Lumen, Crown Castle, NTT, DataBank). Aggregator figures, not official - confirm with Grundfos."
+dc_60_hudson,60 Hudson Street,60 Hudson St,Manhattan,40.7177,-74.0086,,,,,citywide,"DataGryd 5 MW expansion (Data Center Frontier); no building total found","Densest Manhattan carrier hotel. Use default scenarios until a total is found."
+dc_32_aoa,32 Avenue of the Americas,32 Avenue of the Americas,Manhattan,40.7208,-74.0050,,,,,citywide,"No public MW figure found","Digital Realty, Tata, CoreSite tenants."
+dc_375_pearl,375 Pearl Street (Sabey Intergate.Manhattan),375 Pearl St,Manhattan,40.7110,-74.0008,,,,,citywide,"Sabey: +3.6 MW expansion in 2020; total not published",
+dc_325_hudson,325 Hudson Street,325 Hudson St,Manhattan,40.7262,-74.0077,,,,,citywide,"No public MW figure found","Verizon and Lumen tenants."

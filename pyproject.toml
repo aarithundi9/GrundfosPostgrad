@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "heatreuse"
+version = "0.1.0"
+description = "NYC data center waste heat reuse: demand forecasting, building heat model, matching"
+requires-python = ">=3.11"
+dependencies = ["pandas>=2.1", "numpy>=1.26", "pyarrow>=14", "requests>=2.31"]
+
+[project.optional-dependencies]
+ml = ["scikit-learn>=1.4", "lightgbm>=4.1", "xgboost>=2.0", "holidays>=0.40", "matplotlib>=3.8"]
+geo = ["geopandas>=0.14", "shapely>=2.0", "folium>=0.15"]
+opt = ["pulp>=2.7"]
+dl = ["torch>=2.1"]
+dev = ["pytest>=8", "ruff>=0.4", "nbstripout>=0.7", "jupyterlab>=4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
