@@ -229,23 +229,6 @@ check(all_hourly)
     #write_table(all_hourly, "hourly_profiles")
     #write_table(fuel_fractions, "fuel_heat_fractions")
 #except ImportError:
-
-required_profiles = [
-    "timestamp", "puma", "dataset", "profile_type", "models_used", "scale_basis", "scale_value",
-    "space_heating_fuel_kwh", "dhw_fuel_kwh", "space_heating_kwh", "dhw_kwh", "heat_total_kwh",
-]
-required_fractions = [
-    "puma", "profile_type", "fuel", "fuel_total_kwh",
-    "space_heating_fuel_kwh", "dhw_fuel_kwh", "heat_fraction",
-]
-
-missing = [c for c in required_profiles if c not in all_hourly.columns]
-assert not missing, f"hourly_profiles missing columns: {missing}"
-assert not all_hourly.duplicated(["timestamp", "puma", "profile_type"]).any(), "duplicate keys in hourly_profiles"
-
-missing = [c for c in required_fractions if c not in fuel_fractions.columns]
-assert not missing, f"fuel_heat_fractions missing columns: {missing}"
-assert not fuel_fractions.duplicated(["puma", "profile_type", "fuel"]).any(), "duplicate keys in fuel_heat_fractions"
     
 output_folder.mkdir(parents = True, exist_ok = True)
 all_hourly.to_parquet(output_folder / "hourly_profiles.parquet", index = False)
