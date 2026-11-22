@@ -1,0 +1,110 @@
+# Project-wide settings. Every module reads from here via heatreuse.config.load_settings().
+# Change a value here, not in code. Decisions behind each value: docs/decisions.md.
+
+[project]
+weather_year = 2018                # NREL ComStock/ResStock AMY2018 profiles and their weather
+ll84_calendar_year = 2024          # LL84 reporting year used as the annual target (D10)
+
+[time]
+# D4: one time convention for every join. Naive timestamps, Eastern Standard Time (UTC-5)
+# all year, HOUR-ENDING (the 01:00 row covers 00:00-01:00). 8,760 rows:
+# 2018-01-01 01:00 ... 2019-01-01 00:00. America/New_York wall clock is only used
+# for calendar features (column `timestamp_local`), never as a join key.
+convention = "EST_hour_ending_naive"
+hours_per_year = 8760
+
+[split]
+# D7: chronological split. Test is untouched until the final comparison.
+train_start = "2018-01-01 01:00"
+train_end = "2018-10-01 00:00"     # Jan-Sep (inclusive, hour-ending)
+test_start = "2018-10-01 01:00"
+test_end = "2019-01-01 00:00"      # Oct-Dec
+# Hyperparameter tuning: leave-one-month-out CV inside Jan-Sep (not September alone,
+# which has almost no heating). 168-hour gap on each side of the held-out month.
+cv_scheme = "leave_one_month_out"
+cv_gap_hours = 168
+
+[heat]
+# D1: heat demand = space heating + domestic hot water (DHW), kept as separate columns.
+include_dhw = true
+# D2: convert fuel consumed -> useful heat delivered with these efficiencies.
+# Applied identically to NREL profiles (Pod 1) and LL84 fuel use (Pod 2).
+[heat.efficiency]
+natural_gas = 0.80
+fuel_oil = 0.80
+propane = 0.80
+district_heating = 1.00   # steam / hot water metered at the building
+electricity = 1.00        # conservative: resistance. Heat pumps would be >1 (see decisions D2)
+wood = 0.65
+
+[units]
+# D3: canonical unit is kWh (thermal for heat). LL84 kBtu columns keep a _kbtu suffix
+# and are converted with heatreuse.units.
+kwh_per_kbtu = 0.29307107
+
+[nrel]
+oedi_base = "https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock"
+comstock_release = "2025/comstock_amy2018_release_3"
+# ResStock by-PUMA files only exist in the 2021 release (2022+ only publish by_state etc.)
+resstock_release = "2021/resstock_amy2018_release_1"
+weather_county = "G3600610"        # New York County (Manhattan)
+# 2010 PUMAs. 3807 = Chelsea/Clinton/Midtown (CD 4&5), contains 111 8th Ave.
+# 3808 = Murray Hill/Gramercy/Stuy Town (CD 6), 3810 = Battery Park/Greenwich Village/SoHo (CD 1&2).
+# A 1 km radius around 111 8th Ave touches all three.
+primary_puma = "G36003807"
+sensitivity_pumas = ["G36003808", "G36003810"]
+comstock_types = [
+  "fullservicerestaurant", "quickservicerestaurant", "retailstandalone", "retailstripmall",
+  "smalloffice", "mediumoffice", "largeoffice", "smallhotel", "largehotel",
+  "primaryschool", "secondaryschool", "hospital", "outpatient", "warehouse",
+]
+resstock_types = [
+  "multi-family_with_5plus_units", "multi-family_with_2_-_4_units", "single-family_attached",
+  "single-family_detached", "mobile_home",
+]
+min_models_used = 10               # profiles built from fewer simulated models get flagged
+
+[study_area]
+# D9
+anchor_datacenter = "dc_111_8th_ave"
+crs = "EPSG:2263"                  # NY State Plane Long Island, US feet
+radius_m = 1000
+sensitivity_radii_m = [500, 2000]
+distance_from = "footprint_edge"   # 111 8th Ave is a full-block building
+
+[clustering]
+algorithm = "DBSCAN"
+eps_m = 150
+min_samples = 3
+weight = "annual_heat_kwh"
+
+[optimization]
+# Representative-period LP keeps the problem small: 12 months x {weekday, weekend} x 24 h.
+time_resolution = "representative_days"   # or "hourly" (8,760) once it runs fast enough
+solver = "PULP_CBC_CMD"
+max_pipe_length_m = 1500                  # per connection, straight-line x routing factor
+pipe_routing_factor = 1.3                 # Manhattan grid: street distance ~1.3x straight line
+
+[economics]
+# LL97 2024-2029 carbon coefficients (tCO2e per unit). Verify against 1 RCNY 103-14 before citing.
+tco2e_per_kwh_electricity = 0.000288962
+tco2e_per_kbtu_natural_gas = 0.00005311
+tco2e_per_kbtu_fuel_oil_2 = 0.00007421
+tco2e_per_kbtu_fuel_oil_4 = 0.00007529
+tco2e_per_kbtu_district_steam = 0.00004493
+# Cost inputs are deliberately blank: source them (Grundfos, NYSERDA, case studies)
+# before the final week. Code refuses to compute costs while these are unset.
+pipe_cost_usd_per_m = 0
+heat_pump_capex_usd_per_kw = 0
+electricity_price_usd_per_kwh = 0
+gas_price_usd_per_kbtu = 0
+
+[datacenter]
+# D14: engineering estimate, not a prediction (no public metered data exists).
+# Scenario capacities per data center live in config/datacenters.csv.
+utilization = 0.60            # average IT load / IT capacity
+capture_fraction = 0.80       # share of IT heat that can be captured (rest lost to air/envelope)
+source_temp_c = 30.0          # air-cooled return / condenser water. Liquid cooling: 45-60 C
+supply_temp_c = 65.0          # hot water to buildings (DHW-capable)
+carnot_efficiency = 0.50      # heat pump COP = carnot_efficiency * T_supply / (T_supply - T_source)
+diurnal_amplitude = 0.05      # +/-5% daily swing in IT load (peak mid-afternoon)

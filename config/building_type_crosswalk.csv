@@ -1,0 +1,73 @@
+source,source_value,profile_type,notes
+ll84,Office,@office,size-resolved: <25k sqft small / 25k-150k medium / >=150k large
+ll84,Financial Office,@office,
+ll84,Medical Office,outpatient,
+ll84,Bank Branch,smalloffice,
+ll84,Courthouse,@office,
+ll84,Multifamily Housing,@multifamily,resolved by residential units
+ll84,Residence Hall/Dormitory,@multifamily,
+ll84,Senior Living Community,@multifamily,
+ll84,Residential Care Facility,@multifamily,
+ll84,Other - Lodging/Residential,@multifamily,
+ll84,Hotel,@hotel,size-resolved: <75k sqft small / >=75k large
+ll84,K-12 School,@school,size-resolved: <100k sqft primary / >=100k secondary
+ll84,Pre-school/Daycare,primaryschool,
+ll84,College/University,secondaryschool,closest ComStock proxy
+ll84,Adult Education,secondaryschool,
+ll84,Vocational School,secondaryschool,
+ll84,Other - Education,secondaryschool,
+ll84,Hospital (General Medical & Surgical),hospital,ComStock hospital profiles may rest on very few models
+ll84,Other - Specialty Hospital,hospital,
+ll84,Urgent Care/Clinic/Other Outpatient,outpatient,
+ll84,Ambulatory Surgical Center,outpatient,
+ll84,Laboratory,outpatient,closest proxy (24/7 ventilation)
+ll84,Retail Store,retailstandalone,
+ll84,Supermarket/Grocery Store,retailstandalone,PUMA 3810 also has a ComStock grocery profile
+ll84,Wholesale Club/Supercenter,retailstandalone,
+ll84,Strip Mall,retailstripmall,
+ll84,Enclosed Mall,retailstripmall,
+ll84,Convenience Store without Gas Station,retailstandalone,
+ll84,Restaurant,fullservicerestaurant,
+ll84,Fast Food Restaurant,quickservicerestaurant,
+ll84,Food Service,quickservicerestaurant,
+ll84,Bar/Nightclub,fullservicerestaurant,
+ll84,Non-Refrigerated Warehouse,warehouse,
+ll84,Distribution Center,warehouse,
+ll84,Self-Storage Facility,warehouse,
+ll84,Refrigerated Warehouse,warehouse,
+ll84,Manufacturing/Industrial Plant,warehouse,weak proxy
+ll84,Worship Facility,retailstandalone,weak proxy (intermittent occupancy)
+ll84,Social/Meeting Hall,retailstandalone,weak proxy
+ll84,Performing Arts,retailstandalone,weak proxy
+ll84,Museum,retailstandalone,weak proxy
+ll84,Library,mediumoffice,weak proxy
+ll84,Fitness Center/Health Club/Gym,retailstandalone,weak proxy
+ll84,Mixed Use Property,@mixed,split by PLUTO resarea/comarea shares
+ll84,Data Center,EXCLUDE,heat source not sink
+ll84,Parking,EXCLUDE,
+ll84,Other,@pluto,fall back to PLUTO bldgclass
+pluto,A,single-family_attached,one-family dwellings
+pluto,B,multi-family_with_2_-_4_units,two-family dwellings
+pluto,C,@multifamily,walk-up apartments; resolved by unitsres
+pluto,D,multi-family_with_5plus_units,elevator apartments
+pluto,R,@condo,R4/R9 residential condo -> multifamily 5+; R5 commercial -> @office
+pluto,S,@mixed,residence + store
+pluto,O,@office,
+pluto,L,@office,lofts
+pluto,H,@hotel,
+pluto,I,@health,I1 hospital -> hospital; others -> outpatient
+pluto,W,@school,
+pluto,K,retailstandalone,
+pluto,J,retailstandalone,theatres; weak proxy
+pluto,M,retailstandalone,religious; weak proxy
+pluto,N,@multifamily,asylums/homes
+pluto,P,retailstandalone,public assembly; weak proxy
+pluto,Q,EXCLUDE,outdoor recreation
+pluto,E,warehouse,
+pluto,F,warehouse,factories; weak proxy
+pluto,G,EXCLUDE,garages
+pluto,T,EXCLUDE,transportation
+pluto,U,EXCLUDE,utilities
+pluto,V,EXCLUDE,vacant
+pluto,Y,@office,government
+pluto,Z,@pluto_misc,inspect case by case
