@@ -48,7 +48,8 @@ Shared helpers: `config` (reads `config/settings.toml`), `units`, `timeutils`, `
 
 ## Docs
 
-- [docs/gaps.md](docs/gaps.md): what was missing from the scope doc and how it was filled. **Start here.**
+- [DELIVERABLES.md](DELIVERABLES.md): **what each person builds, week by week. Start here.**
+- [docs/gaps.md](docs/gaps.md): what was missing from the scope doc and how it was filled
 - [docs/decisions.md](docs/decisions.md): decisions D1–D15 (PMs to confirm)
 - [docs/data_contract.md](docs/data_contract.md): every handoff table and its columns
 - [docs/timeline.md](docs/timeline.md): weeks 3–6, per-person tasks
