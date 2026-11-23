@@ -9,6 +9,7 @@ outputs/figures/*
 outputs/reports/*
 !outputs/**/.gitkeep
 *.parquet
+!data/modeling/*.parquet
 *.zip
 *.gpkg
 *.shp

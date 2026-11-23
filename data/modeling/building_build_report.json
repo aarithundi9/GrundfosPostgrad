@@ -1,0 +1,15 @@
+{
+  "ll84_properties": 39090,
+  "matched_to_pluto": 38602,
+  "match_rate": 0.988,
+  "usable_ok_rows": 27838,
+  "flags": {
+    "ok": 27838,
+    "no_heating_fuel_reported": 9754,
+    "outlier_intensity": 570,
+    "meter_gap": 365,
+    "invalid_area": 75
+  },
+  "predict_lots_2km": 8450,
+  "predict_lots_1km": 3391
+}

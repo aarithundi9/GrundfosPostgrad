@@ -1,4 +1,4 @@
-"""OWNER: Emma. Load NREL ComStock + ResStock 15-min profiles -> ``hourly_profiles`` table.
+"""DONE (data loading is now central). Load NREL ComStock + ResStock 15-min profiles -> ``hourly_profiles`` table.
 
 Run: ``python scripts/download_nrel.py`` first (files land in data/raw/nrel/).
 
@@ -35,6 +35,8 @@ Steps (from the Week 2 plan, updated with decisions D1-D3):
 from __future__ import annotations
 
 import pandas as pd
+
+from heatreuse import config, timeutils
 
 FUELS = ["natural_gas", "fuel_oil", "propane", "district_heating", "electricity", "wood"]
 
@@ -84,21 +86,98 @@ PROFILE_TYPE_FROM_FILE = {
 }
 
 
-def load_comstock(puma: str, profile_type: str) -> pd.DataFrame:
-    """Read one raw ComStock file from data/raw/nrel/comstock/. TODO(Emma)."""
-    raise NotImplementedError
+def _heat_columns(df: pd.DataFrame, space: dict, dhw: dict, scale: float) -> pd.DataFrame:
+    """Fuel and delivered-heat columns (kWh) from raw NREL columns."""
+    eff = config.load_settings()["heat"]["efficiency"]
+    out = pd.DataFrame({"timestamp": df["timestamp"]})
+    space_fuel = space_heat = dhw_fuel = dhw_heat = 0.0
+    for fuel, cols in space.items():
+        v = df[[c for c in cols if c in df.columns]].sum(axis=1) * scale
+        out[f"{fuel}_heating_kwh"] = v
+        space_fuel = space_fuel + v
+        space_heat = space_heat + v * eff[fuel]
+    for fuel, cols in dhw.items():
+        v = df[[c for c in cols if c in df.columns]].sum(axis=1) * scale
+        out[f"{fuel}_dhw_kwh"] = v
+        dhw_fuel = dhw_fuel + v
+        dhw_heat = dhw_heat + v * eff[fuel]
+    out["space_heating_fuel_kwh"] = space_fuel
+    out["dhw_fuel_kwh"] = dhw_fuel
+    out["space_heating_kwh"] = space_heat
+    out["dhw_kwh"] = dhw_heat
+    out["heat_total_kwh"] = space_heat + dhw_heat
+    return out
 
 
-def load_resstock(puma: str, profile_type: str) -> pd.DataFrame:
-    """Read one raw ResStock file from data/raw/nrel/resstock/. TODO(Emma)."""
-    raise NotImplementedError
+def _raw_path(dataset: str, puma: str, profile_type: str):
+    return config.RAW / "nrel" / dataset / f"{puma}_{profile_type}.csv"
+
+
+def load_profile(dataset: str, puma: str, profile_type: str) -> pd.DataFrame | None:
+    """One building type in one PUMA -> hourly rows (hour-ending EST). None if absent."""
+    path = _raw_path(dataset, puma, profile_type)
+    if not path.exists():
+        return None
+    raw = pd.read_csv(path, parse_dates=["timestamp"])
+    if dataset == "comstock":
+        scale, basis = 1.0, "floor_area_sqft"
+        scale_value = float(raw["floor_area_represented"].iloc[0])
+        heat = _heat_columns(raw, COMSTOCK_SPACE_HEATING, COMSTOCK_DHW, scale)
+    else:
+        scale_value = float(raw["units_represented"].iloc[0])
+        scale, basis = scale_value, "dwelling_units"   # per-unit values -> stock totals
+        heat = _heat_columns(raw, RESSTOCK_SPACE_HEATING, RESSTOCK_DHW, scale)
+    value_cols = [c for c in heat.columns if c != "timestamp"]
+    hourly = timeutils.to_hourly(heat, value_cols)
+    hourly.insert(1, "puma", puma)
+    hourly.insert(2, "dataset", "ComStock" if dataset == "comstock" else "ResStock")
+    hourly.insert(3, "profile_type", profile_type)
+    hourly["models_used"] = int(raw["models_used"].iloc[0])
+    hourly["scale_basis"] = basis
+    hourly["scale_value"] = scale_value
+    hourly["low_model_count"] = hourly["models_used"] < config.get("nrel.min_models_used")
+    return hourly
 
 
 def build_hourly_profiles(pumas: list[str] | None = None) -> pd.DataFrame:
-    """Steps 1-7 above. Returns the ``hourly_profiles`` table. TODO(Emma)."""
-    raise NotImplementedError
+    """All downloaded building types for the given PUMAs -> ``hourly_profiles``."""
+    n = config.load_settings()["nrel"]
+    pumas = pumas or [n["primary_puma"]]
+    frames = []
+    for puma in pumas:
+        for ds, types in [("comstock", n["comstock_types"]), ("resstock", n["resstock_types"])]:
+            for t in types:
+                df = load_profile(ds, puma, t)
+                if df is not None and df["heat_total_kwh"].sum() > 0:
+                    frames.append(df)
+    if not frames:
+        raise FileNotFoundError("no NREL files found; run python scripts/download_nrel.py")
+    out = pd.concat(frames, ignore_index=True)
+    timeutils.check_hourly(out, by=["puma", "profile_type"])
+    return out
 
 
-def build_fuel_heat_fractions(raw: pd.DataFrame) -> pd.DataFrame:
-    """Step 8. Returns the ``fuel_heat_fractions`` table. TODO(Emma)."""
-    raise NotImplementedError
+def build_fuel_heat_fractions(pumas: list[str] | None = None) -> pd.DataFrame:
+    """Annual share of each fuel used for space heating + hot water, per building type."""
+    n = config.load_settings()["nrel"]
+    pumas = pumas or [n["primary_puma"]]
+    rows = []
+    for puma in pumas:
+        for ds, types in [("comstock", n["comstock_types"]), ("resstock", n["resstock_types"])]:
+            space, dhw, total = ((COMSTOCK_SPACE_HEATING, COMSTOCK_DHW, COMSTOCK_FUEL_TOTAL)
+                                 if ds == "comstock" else
+                                 (RESSTOCK_SPACE_HEATING, RESSTOCK_DHW, RESSTOCK_FUEL_TOTAL))
+            for t in types:
+                path = _raw_path(ds, puma, t)
+                if not path.exists():
+                    continue
+                raw = pd.read_csv(path)
+                for fuel, cols in total.items():
+                    tot = raw[[c for c in cols if c in raw]].to_numpy().sum()
+                    sh = raw[[c for c in space.get(fuel, []) if c in raw]].to_numpy().sum()
+                    dh = raw[[c for c in dhw.get(fuel, []) if c in raw]].to_numpy().sum()
+                    if tot > 0:
+                        rows.append({"puma": puma, "profile_type": t, "fuel": fuel,
+                                     "fuel_total_kwh": tot, "space_heating_fuel_kwh": sh,
+                                     "dhw_fuel_kwh": dh, "heat_fraction": (sh + dh) / tot})
+    return pd.DataFrame(rows)

@@ -20,6 +20,12 @@ def load_crosswalk() -> pd.DataFrame:
     return pd.read_csv(config.CONFIG_DIR / "building_type_crosswalk.csv")
 
 
+@lru_cache(maxsize=1)
+def _lookup() -> dict:
+    cw = load_crosswalk()
+    return {(r.source, r.source_value): r.profile_type for r in cw.itertuples()}
+
+
 def valid_profile_types() -> set[str]:
     s = config.load_settings()["nrel"]
     return set(s["comstock_types"]) | set(s["resstock_types"])
@@ -60,16 +66,14 @@ def resolve(source: str, value: str, floor_area_sqft=None, units_res=None,
     source="ll84": value is the LL84 "Largest Property Use Type".
     source="pluto": value is the PLUTO bldgclass (first letter is used).
     """
-    cw = load_crosswalk()
     if source == "pluto":
         bldgclass = bldgclass or value
         value = str(value)[:1].upper()
-    row = cw[(cw["source"] == source) & (cw["source_value"] == value)]
-    if row.empty:
+    token = _lookup().get((source, value))
+    if token is None:
         if source == "ll84" and bldgclass:
             return resolve("pluto", bldgclass, floor_area_sqft, units_res, bldgclass, res_share)
         return "mediumoffice"  # documented fallback; count how often this happens
-    token = row["profile_type"].iloc[0]
     if token in ("@pluto", "@pluto_misc"):
         if source == "ll84" and bldgclass:
             return resolve("pluto", bldgclass, floor_area_sqft, units_res, bldgclass, res_share)

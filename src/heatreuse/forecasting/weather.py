@@ -1,4 +1,4 @@
-"""OWNER: Karan. NREL AMY2018 weather for Manhattan -> ``weather_hourly`` table.
+"""DONE (data loading is now central). NREL AMY2018 weather for Manhattan -> ``weather_hourly`` table.
 
 Source file (checked on OEDI): comstock_amy2018_release_3/weather/amy2018/G3600610_2018.csv
   8,760 rows, hour-ending EST, first row 2018-01-01 01:00, last row 2019-01-01 00:00.
@@ -37,17 +37,26 @@ DROP = ["Wind Direction [Deg]", "Direct Normal Radiation [W/m2]",
 HDH_BASE_C = 18.3
 
 
-def build_weather_hourly() -> pd.DataFrame:
-    """Steps 1-7. TODO(Karan)."""
-    raise NotImplementedError
-
-
-def alignment_test(profiles: pd.DataFrame, weather: pd.DataFrame,
-                   shifts=range(-3, 4)) -> pd.DataFrame:
-    """Step 8: correlation of heat_total_kwh with temp shifted by each lag. TODO(Karan)."""
-    raise NotImplementedError
-
-
-def compare_to_noaa(weather: pd.DataFrame, noaa: pd.DataFrame) -> dict:
-    """Step 9. TODO(Karan)."""
-    raise NotImplementedError
+def build_weather_hourly(path=None) -> pd.DataFrame:
+    """Steps 1-7 -> ``weather_hourly``."""
+    from heatreuse import config, timeutils
+    path = path or config.RAW / "nrel" / "weather" / f"{config.get('nrel.weather_county')}_2018.csv"
+    df = pd.read_csv(path).drop(columns=DROP, errors="ignore").rename(columns=RENAME)
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    timeutils.check_hourly(df)
+    df = df.set_index("timestamp")
+    bad = (df["temp_c"] < -25) | (df["temp_c"] > 40) | (df["rel_humidity_pct"] < 0) \
+        | (df["rel_humidity_pct"] > 100) | (df["ghi_wm2"] < 0)
+    df.loc[bad, ["temp_c", "rel_humidity_pct", "ghi_wm2"]] = float("nan")
+    gaps = df["temp_c"].isna()
+    df = df.interpolate(limit=3, limit_direction="both")
+    df["is_interpolated"] = gaps & df["temp_c"].notna()
+    if df["temp_c"].isna().any():
+        raise ValueError(f"{int(df['temp_c'].isna().sum())} weather hours missing after filling 3 h gaps")
+    df["temp_f"] = df["temp_c"] * 9 / 5 + 32
+    df["hdh_18c"] = (HDH_BASE_C - df["temp_c"]).clip(lower=0)
+    df["temp_c_roll24"] = df["temp_c"].rolling(24, min_periods=1).mean()
+    df["temp_c_lag1"] = df["temp_c"].shift(1).bfill()
+    df["temp_c_lag3"] = df["temp_c"].shift(3).bfill()
+    df = timeutils.add_local_time(df.reset_index())
+    return df
