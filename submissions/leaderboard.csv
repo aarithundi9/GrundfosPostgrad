@@ -1,3 +1,4 @@
 submitted,track,file,primary_metric,score,mean_wape,mean_abs_nmbe,mae_kwh,wape
 2026-11-23 20:39,buildings,baseline_buildings.csv,median_ape,0.3285,,,776546.7001,0.5075
+2026-11-27 21:33,hourly,daksh_hourly.csv,mean_cvrmse,0.2509,0.1939,0.1422,,
 2026-11-23 20:38,hourly,baseline_hourly.csv,mean_cvrmse,0.3918,0.3121,0.2016,,
